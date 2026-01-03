@@ -1,0 +1,22 @@
+[package]
+name = "pantheros"
+version = "0.1.0"
+edition = "2021"
+authors = ["PantherOS Team"]
+description = "Minimal security-focused ARM64 kernel in Rust"
+license = "MIT"
+
+[dependencies]
+spin = "0.9"
+linked_list_allocator = "0.10"
+bitflags = "2.4"
+log = { version = "0.4", default-features = false }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+lto = true
+opt-level = 2
+codegen-units = 1
