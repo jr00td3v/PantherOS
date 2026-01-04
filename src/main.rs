@@ -1,12 +1,18 @@
-//! PantherOS - Minimal Security-Focused ARM64 Kernel
+//! PantherOS - High-Assurance ARM64 Microkernel
 //!
-//! A paravirtualized Rust kernel targeting QEMU/UTM on Apple Silicon.
+//! A security-focused microkernel targeting QEMU/UTM on Apple Silicon.
+//!
+//! # Phase 1: The Fortress Foundation
+//! - Hardware-enforced isolation (ARM64 VMSA)
+//! - Capability-based security (seL4-inspired)
+//! - Confidential computing patterns
 //!
 //! # Security Features
 //! - Memory safety via Rust's ownership model
 //! - Clear privilege boundaries (EL0/EL1)
-//! - Validated system call interface
-//! - Auditable unsafe code patterns
+//! - Type-safe page table management
+//! - Capability-based syscall interface
+//! - Automatic secret zeroization
 //!
 //! # Architecture
 //! - Target: AArch64 (ARM64)
@@ -20,9 +26,11 @@
 
 extern crate alloc;
 
+mod cap;
 mod drivers;
 mod exception;
 mod mm;
+mod security;
 mod syscall;
 
 use core::arch::global_asm;
@@ -34,7 +42,7 @@ use drivers::uart::UART;
 global_asm!(include_str!("boot.S"));
 
 /// Kernel version string
-const VERSION: &str = "0.1.0";
+const VERSION: &str = "0.2.0";
 
 /// Kernel entry point called from boot.S
 ///
@@ -52,14 +60,14 @@ pub extern "C" fn kernel_main() -> ! {
 
     // Print boot banner
     kprintln!();
-    kprintln!("PantherOS v{} - Security-Focused ARM64 Kernel", VERSION);
-    kprintln!("================================================");
+    kprintln!("PantherOS v{} - High-Assurance ARM64 Microkernel", VERSION);
+    kprintln!("===================================================");
     kprintln!();
 
     kprintln!("[BOOT] Initializing kernel...");
-    kprintln!("[BOOT] UART initialized");
+    kprintln!("[BOOT] UART initialized (typestate verified)");
 
-    // Initialize heap allocator
+    // Initialize memory management (heap + frame allocator)
     mm::init_heap();
     let heap_size = mm::heap_size() / 1024;
     kprintln!("[BOOT] Heap initialized ({} KiB)", heap_size);
@@ -67,8 +75,15 @@ pub extern "C" fn kernel_main() -> ! {
     // Initialize exception handling
     exception::init();
 
-    // Main boot message
+    // Report Phase 1 features
     kprintln!();
+    kprintln!("[PHASE 1] The Fortress Foundation");
+    kprintln!("  - Page Table Types: PageFlags, PageTableEntry");
+    kprintln!("  - Address Types: PhysAddr, VirtAddr");
+    kprintln!("  - Capability System: CSpace, Rights");
+    kprintln!("  - Security: SecureWrapper<T>, Zeroize");
+    kprintln!();
+
     kprintln!("Hello from PantherOS!");
     kprintln!();
     kprintln!("[BOOT] Kernel initialization complete");

@@ -3,67 +3,68 @@
  * Target: QEMU virt machine (ARM64)
  * 
  * Memory Layout:
- * - RAM starts at 0x40000000 for QEMU virt
- * - Kernel loaded at 0x40080000 (standard Linux kernel load address)
- * - Stack grows downward from end of kernel
+ * - Physical RAM starts at 0x40000000
+ * - Kernel Load Address (LMA) at 0x40080000
+ * - Kernel Virtual Address (VMA) at 0xFFFF000040080000
+ * - High-half offset: 0xFFFF000000000000
  */
 
 ENTRY(_start)
 
-MEMORY
-{
-    /* QEMU virt machine RAM: 0x40000000 - 0x80000000 (1GB default) */
-    RAM (rwx) : ORIGIN = 0x40080000, LENGTH = 128M
-}
+/* Constants */
+KERNEL_OFFSET = 0xFFFF000000000000;
+PHYS_BASE = 0x40080000;
 
 SECTIONS
 {
-    . = ORIGIN(RAM);
+    /* Set current location counter to VMA */
+    . = PHYS_BASE + KERNEL_OFFSET;
 
     /* Code section */
-    .text : ALIGN(4K)
+    .text : AT(ADDR(.text) - KERNEL_OFFSET) ALIGN(4K)
     {
         __text_start = .;
         *(.text._start)     /* Entry point first */
         *(.text .text.*)
         __text_end = .;
-    } > RAM
+    }
 
     /* Read-only data */
-    .rodata : ALIGN(4K)
+    .rodata : AT(ADDR(.rodata) - KERNEL_OFFSET) ALIGN(4K)
     {
         __rodata_start = .;
         *(.rodata .rodata.*)
         __rodata_end = .;
-    } > RAM
+    }
 
     /* Initialized data */
-    .data : ALIGN(4K)
+    .data : AT(ADDR(.data) - KERNEL_OFFSET) ALIGN(4K)
     {
         __data_start = .;
         *(.data .data.*)
         __data_end = .;
-    } > RAM
+    }
 
     /* Uninitialized data (BSS) */
-    .bss : ALIGN(4K)
+    .bss : AT(ADDR(.bss) - KERNEL_OFFSET) ALIGN(4K)
     {
         __bss_start = .;
         *(.bss .bss.*)
         *(COMMON)
         __bss_end = .;
-    } > RAM
+    }
 
-    /* Stack (16KB, 16-byte aligned for ARM64 ABI) */
+    /* Stack */
     . = ALIGN(16);
     __stack_bottom = .;
     . += 16K;
     __stack_top = .;
 
-    /* Heap starts after stack */
+    /* Heap */
     . = ALIGN(4K);
     __heap_start = .;
-    __heap_end = ORIGIN(RAM) + LENGTH(RAM);
+    /* 128MB total RAM limit relative to virtual base */
+    __heap_end = PHYS_BASE + KERNEL_OFFSET + 128M;
 
     /* Discard unwanted sections */
     /DISCARD/ :
@@ -74,6 +75,6 @@ SECTIONS
     }
 }
 
-/* Export symbols for Rust code */
-PROVIDE(__kernel_start = ORIGIN(RAM));
-PROVIDE(__kernel_end = __heap_start);
+/* Export symbols */
+PROVIDE(__kernel_virtual_start = PHYS_BASE + KERNEL_OFFSET);
+PROVIDE(__kernel_physical_start = PHYS_BASE);
